@@ -59,3 +59,91 @@ python record_demo.py
 *(Berikut adalah video demonstrasi dari agen yang telah dilatih berjalan secara otomatis)*
 [Tonton Video Demonstrasi di sini](video/2026-06-15%2021-14-29.mp4)
 
+## Penambahan: Implementasi 3D MiniWorld (Maze)
+
+Selain lingkungan GridWorld 2D di atas, saya juga telah menambahkan implementasi lingkungan **3D** menggunakan **Farama MiniWorld** ([dokumentasi resmi](https://miniworld.farama.org/environments/maze/)). Lingkungan yang saya pilih adalah **Maze** (`MiniWorld-Maze-v0`), di mana agen ditempatkan di dalam sebuah labirin 3D dan harus menavigasi untuk menemukan **kotak merah** (target) yang tersembunyi di suatu titik di labirin.
+
+### Apa Bedanya dengan GridWorld 2D?
+
+Perbedaan antara GridWorld 2D dan MiniWorld 3D sangat signifikan, dan inilah yang membuat implementasi ini menarik:
+
+| Aspek | GridWorld 2D | MiniWorld 3D (Maze) |
+|---|---|---|
+| **Perspektif** | Tampak atas (*top-down*) | Sudut pandang orang pertama (*first-person*) |
+| **Observasi (Input)** | 4 angka koordinat (posisi agen + target) | Gambar RGB 60×80 pixel (14.400 nilai!) |
+| **Action Space** | 4 aksi (atas, bawah, kiri, kanan) | 3 aksi (belok kiri, belok kanan, maju) |
+| **Arsitektur Neural Network** | MLP (Multi-Layer Perceptron) sederhana | **CNN** (Convolutional Neural Network) |
+| **Kompleksitas** | Rendah — grid kecil | Tinggi — labirin besar dengan lorong-lorong |
+
+Karena agen di MiniWorld **hanya bisa melihat apa yang ada di depannya** (seperti manusia sungguhan berjalan di dalam labirin), ia tidak tahu peta keseluruhan. Ini jauh lebih menantang dibandingkan GridWorld di mana agen bisa "melihat" semua dari atas.
+
+### Mengapa Perlu CNN (Convolutional Neural Network)?
+
+Di GridWorld, observasi hanyalah 4 angka (koordinat agen dan target). Cukup menggunakan MLP (*Multi-Layer Perceptron*) biasa untuk memproses angka-angka tersebut.
+
+Namun di MiniWorld, observasi adalah **gambar RGB** berukuran 60×80×3 pixel. Jika saya coba meratakan (*flatten*) semua piksel ini dan memasukkannya ke MLP biasa, hasilnya akan sangat buruk karena:
+- MLP tidak memahami **hubungan spasial** antar piksel (piksel yang berdekatan saling terkait secara visual)
+- Jumlah parameter akan sangat besar dan tidak efisien
+
+Oleh karena itu, saya menggunakan **CNN** yang dirancang khusus untuk data visual. CNN bekerja dengan *filter* (kernel) yang bergeser (*sliding*) di atas gambar untuk mendeteksi pola visual seperti:
+- **Garis-garis** tepi dinding
+- **Warna** kotak merah (target)
+- **Koridor** yang bisa dilewati
+
+Arsitektur `CnnDQN` yang saya implementasikan di file `train_maze_dqn.py` terinspirasi dari paper klasik DeepMind "*Playing Atari with Deep Reinforcement Learning*" (2013):
+
+```
+Gambar RGB (3, 60, 80)
+  → Conv2d 32 filter (8×8, stride 4) + ReLU   → Deteksi pola dasar
+  → Conv2d 64 filter (4×4, stride 2) + ReLU   → Deteksi pola kompleks
+  → Conv2d 64 filter (3×3, stride 1) + ReLU   → Fitur tingkat tinggi
+  → Flatten menjadi vektor 1D (1536 nilai)
+  → Linear 512 neuron + ReLU                  → Pengambilan keputusan
+  → Linear 3 neuron (output)                  → Q-value untuk 3 aksi
+```
+
+### Deskripsi Program-Program MiniWorld
+
+#### 1. `train_maze_dqn.py` — Melatih Agen CNN-DQN
+
+Script ini melatih agen menggunakan algoritma **Deep Q-Learning dengan CNN** untuk menyelesaikan labirin 3D. Komponen-komponen utamanya:
+
+1. **Preprocessing**: Gambar mentah (uint8, 0-255) dinormalisasi ke float (0.0-1.0) dan diubah formatnya dari `(H, W, C)` ke `(C, H, W)` sesuai konvensi PyTorch.
+2. **CnnDQN**: Arsitektur CNN yang mengekstrak fitur visual dari gambar, lalu menghasilkan Q-value untuk setiap aksi.
+3. **Replay Memory**: Menyimpan transisi pengalaman agen untuk sampel acak saat training (mencegah korelasi temporal).
+4. **Target Network + Soft Update**: Menstabilkan training, sama seperti di GridWorld tetapi dengan arsitektur CNN.
+5. **Epsilon-Greedy**: Awalnya 100% eksplorasi acak, perlahan bergeser ke eksploitasi seiring agen belajar.
+
+Setelah training selesai, model terbaik akan tersimpan sebagai `maze_dqn_model.pth`.
+
+#### 2. `run_maze.py` — Demo dan Screenshot
+
+Program ini menjalankan agen di dalam labirin dan menyimpan screenshot. Jika file model `maze_dqn_model.pth` ditemukan, agen akan menggunakan "otaknya" (model CNN-DQN terlatih) untuk bernavigasi. Jika model belum ada, agen akan bergerak secara acak.
+
+### Screenshot Lingkungan 3D MiniWorld (Maze)
+
+Berikut adalah hasil tangkapan layar (*screenshot*) dari sudut pandang agen di dalam labirin 3D:
+
+![Screenshot MiniWorld Maze](maze_screenshot.png)
+
+### Cara Menjalankan
+
+#### Langkah 1: Instalasi Kebutuhan
+Pastikan Anda sudah menginstal library berikut:
+```bash
+pip install miniworld gymnasium torch numpy pillow
+```
+
+#### Langkah 2: Melatih Model CNN-DQN (Opsional)
+Jika Anda ingin melatih agen agar bisa bernavigasi secara cerdas di labirin:
+```bash
+python train_maze_dqn.py
+```
+> **Catatan**: Training ini memakan waktu lebih lama dibandingkan GridWorld karena data yang diproses jauh lebih besar (gambar vs angka). Di CPU, perkiraan waktu sekitar beberapa menit.
+
+#### Langkah 3: Menjalankan Demo dan Mendapatkan Screenshot
+```bash
+python run_maze.py
+```
+Script ini akan otomatis mendeteksi apakah model terlatih tersedia dan memilih mode yang sesuai (agen cerdas atau acak), lalu menyimpan screenshot sebagai `maze_screenshot.png`.
+

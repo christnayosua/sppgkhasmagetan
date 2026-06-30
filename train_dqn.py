@@ -112,7 +112,7 @@ def train():
 
     num_episodes = 5000 if torch.cuda.is_available() else 3000
     
-    print("\n\033[95m\033[1m🚀 Memulai peluncuran training agen Deep Q-Learning...\033[0m\n")
+    print("\nMemulai training agen Deep Q-Learning...\n")
     start_time = time.time()
     for i_episode in range(num_episodes):
         state, info = env.reset()
@@ -152,18 +152,18 @@ def train():
             filled_length = int(bar_length * progress)
             bar = '█' * filled_length + '░' * (bar_length - filled_length)
             
-            # Animasi roket yang maju seiring progres
+            # Progress bar sederhana
             rocket_pos = min(int(bar_length * progress), bar_length - 1)
             rocket_track = ['-'] * bar_length
-            rocket_track[rocket_pos] = '🚀'
+            rocket_track[rocket_pos] = '>'
             track_str = "".join(rocket_track)
             
-            print(f"\r\033[96m[{bar}]\033[0m \033[93mEpisode {i_episode+1:4d}/{num_episodes}\033[0m | \033[95m{track_str}\033[0m", end="", flush=True)
+            print(f"\r[{bar}] Episode {i_episode+1:4d}/{num_episodes} | {track_str}", end="", flush=True)
 
-    print(f"\n\n\033[92m\033[1m✨ Selesai! Agen berhasil mendarat di target dalam {time.time() - start_time:.2f} detik.\033[0m")
+    print(f"\n\nSelesai! Agen berhasil dilatih dalam {time.time() - start_time:.2f} detik.")
     
     torch.save(policy_net.state_dict(), "dqn_model.pth")
-    print("\033[94m💾 Model disimpan sebagai 'dqn_model.pth'\033[0m\n")
+    print("Model disimpan sebagai 'dqn_model.pth'\n")
     env.close()
 
 if __name__ == "__main__":
