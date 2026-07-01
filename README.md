@@ -147,3 +147,9 @@ python run_maze.py
 ```
 Script ini akan otomatis mendeteksi apakah model terlatih tersedia dan memilih mode yang sesuai (agen cerdas atau acak), lalu menyimpan screenshot sebagai `maze_screenshot.png`.
 
+#### Langkah 4: Melatih Model Tingkat Lanjut (PPO)
+Jika DQN kesulitan menyelesaikan labirin (mendapat skor negatif secara konstan), Anda bisa melatih model menggunakan algoritma **Proximal Policy Optimization (PPO)** yang jauh lebih canggih dan stabil:
+```bash
+python train_maze_ppo.py
+```
+Model PPO ini ditulis murni menggunakan PyTorch dan akan menyimpan bobotnya di `maze_ppo_model.pth`.
