@@ -58,7 +58,7 @@ class ActorCriticCnn(nn.Module):
             layer_init(nn.Conv2d(64, 64, kernel_size=3, stride=1)),
             nn.ReLU(),
             nn.Flatten(),
-            layer_init(nn.Linear(64 * 4 * 7, 512)),
+            layer_init(nn.Linear(1536, 512)), # 64 * 4 * 6 = 1536 (Untuk resolusi 60x80)
             nn.ReLU(),
         )
         
