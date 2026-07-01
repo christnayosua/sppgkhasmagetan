@@ -25,7 +25,7 @@ N_EPOCHS = 4              # Jumlah epoch per update
 GAMMA = 0.99              # Faktor diskon (Discount factor)
 GAE_LAMBDA = 0.95         # Parameter GAE (Generalized Advantage Estimation)
 CLIP_COEF = 0.2           # Batas (clip) untuk fungsi objektif PPO
-ENTROPY_COEF = 0.01       # Bobot untuk mendorong eksplorasi (Entropy bonus)
+ENTROPY_COEF = 0.05       # DITINGKATKAN (dari 0.01 ke 0.05) agar agen dipaksa terus mengeksplorasi
 VF_COEF = 0.5             # Bobot untuk Value Loss
 LR = 3e-4                 # Learning rate (PPO biasanya lebih stabil dengan LR tetap)
 
@@ -138,11 +138,10 @@ def train():
             next_obs, reward, terminated, truncated, _ = env.step(action.item())
             done = terminated or truncated
             
-            # Reward shaping ringan
+            # Reward shaping: Hanya berikan penalti waktu yang sangat kecil
+            # HAPUS penalti berputar karena membuat agen takut berbelok dan memilih menabrak tembok
             if not terminated:
-                reward -= 0.01
-                if action.item() in [0, 1]: # Penalti berputar
-                    reward -= 0.005
+                reward -= 0.005 
                     
             episode_reward += reward
             
