@@ -152,7 +152,7 @@ def train():
     GAMMA = 0.99            # Faktor diskon — seberapa penting reward masa depan
     EPS_START = 1.0         # Epsilon awal — awalnya 100% eksplorasi acak
     EPS_END = 0.05          # Epsilon minimum — di akhir, 5% masih acak
-    EPS_DECAY = 30000       # Kecepatan penurunan epsilon (lebih lambat karena maze lebih kompleks)
+    EPS_DECAY = 60000       # Kecepatan penurunan epsilon (diperlambat agar lebih banyak eksplorasi)
     TAU = 0.005             # Kecepatan soft-update target network
     LR = 1e-4               # Learning rate optimizer
     MEMORY_CAPACITY = 50000 # Kapasitas replay buffer
@@ -237,7 +237,7 @@ def train():
         optimizer.step()
 
     # ---- Loop Training Utama ----
-    num_episodes = 500
+    num_episodes = 1500          # Ditingkatkan karena akan berjalan cepat di GPU Colab
     max_steps_per_episode = 500  # Batas langkah per episode agar agen punya cukup waktu
 
     print(f"\nMemulai training CNN-DQN untuk MiniWorld Maze...")
@@ -259,6 +259,16 @@ def train():
             # Pilih dan jalankan aksi
             action = select_action(state)
             next_obs, reward, terminated, truncated, info = env.step(action.item())
+            
+            # --- REWARD SHAPING (OPTIMASI) ---
+            # Berikan hukuman kecil setiap langkah agar agen bergerak lebih cepat ke tujuan
+            if not terminated:
+                reward -= 0.01 
+                
+                # Berikan sedikit penalti ekstra jika agen hanya berputar-putar (aksi 0=kiri, 1=kanan)
+                if action.item() in [0, 1]:
+                    reward -= 0.005
+
             episode_reward += reward
 
             reward_tensor = torch.tensor([reward], device=device, dtype=torch.float32)
